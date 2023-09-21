@@ -115,7 +115,7 @@ def closed_form(filename: str, n: int, lmda: float):
     plt.plot(x, poly_eval(x, sol, n))
 
 
-def newton(filename: str, n: int, lmda: float, iters:int=100):
+def newton(filename: str, n: int, lmda: float, iters:int=10):
     """
     Find the line that best fits the data using Newton's method
     """
@@ -148,7 +148,7 @@ def newton(filename: str, n: int, lmda: float, iters:int=100):
     x = np.linspace(-5, 5, 400)
     plt.plot(x, poly_eval(x, sol, n))
 
-def steepest_descent(filename: str, n: int, lmda: float):
+def steepest_descent(filename: str, n: int, lmda: float, iters:int=1000, lr:float = 1e-4):
     df = pd.read_csv(filename)
     data = np.array(df)
     # print(data)
@@ -157,6 +157,27 @@ def steepest_descent(filename: str, n: int, lmda: float):
     for i in range(n):
         A[:, i] = data[:, 0]**np.array(i)
     b = data[:, 1]
+    AT = transpose(A)
+    x = np.zeros((n))
+    for i in range(iters):
+        x_sign = np.where(x>0, 1, -1)
+        gradient = 2 * matmul((matmul(AT, A) + lmda * x_sign), x) - 2 * matmul(AT, b)
+        print(gradient)
+        x = x - lr * gradient
+    sol = x
+
+    line = [f"{float(sol[i])}x^{i}" for i in range(n - 1, 0, -1)]
+    line.append(str(float(sol[0])))
+    print("Steepest descent:")
+    print("bestfitting line: {}".format(" + ".join(line)))
+    print("total error: {}".format(
+        np.sum((poly_eval(data[:, 0], sol, n) - data[:, 1])**2)))
+    print()
+    plt.subplot(3, 1, 3)
+    plt.scatter(data[:, 0], data[:, 1])
+    x = np.linspace(-5, 5, 400)
+    plt.plot(x, poly_eval(x, sol, n))
+
 
 
 if __name__ == "__main__":
@@ -173,5 +194,5 @@ if __name__ == "__main__":
     filename = "testfile.txt"
     closed_form(filename, 3, 0)
     newton(filename, 3, 0)
-    steepest_descent(filename, 2, 0)
+    steepest_descent(filename, 3, 0)
     plt.show()
