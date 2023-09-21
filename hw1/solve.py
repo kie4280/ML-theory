@@ -113,6 +113,7 @@ def closed_form(filename: str, n: int, lmda: float):
     plt.scatter(data[:, 0], data[:, 1])
     x = np.linspace(-5, 5, 400)
     plt.plot(x, poly_eval(x, sol, n))
+    plt.title("Closed form")
 
 
 def newton(filename: str, n: int, lmda: float, iters:int=10):
@@ -147,6 +148,7 @@ def newton(filename: str, n: int, lmda: float, iters:int=10):
     plt.scatter(data[:, 0], data[:, 1])
     x = np.linspace(-5, 5, 400)
     plt.plot(x, poly_eval(x, sol, n))
+    plt.title("Newton's method")
 
 def steepest_descent(filename: str, n: int, lmda: float, iters:int=1000, lr:float = 1e-4):
     df = pd.read_csv(filename)
@@ -162,7 +164,7 @@ def steepest_descent(filename: str, n: int, lmda: float, iters:int=1000, lr:floa
     for i in range(iters):
         x_sign = np.where(x>0, 1, -1)
         gradient = 2 * matmul((matmul(AT, A) + lmda * x_sign), x) - 2 * matmul(AT, b)
-        print(gradient)
+        # print(gradient)
         x = x - lr * gradient
     sol = x
 
@@ -177,20 +179,32 @@ def steepest_descent(filename: str, n: int, lmda: float, iters:int=1000, lr:floa
     plt.scatter(data[:, 0], data[:, 1])
     x = np.linspace(-5, 5, 400)
     plt.plot(x, poly_eval(x, sol, n))
+    plt.title("Steepest descent")
 
 
+def testing():
+    """
+    This is for testing purposes only!
+    Automated testing the funciton of inverse and matmul
+    """
+    I = np.identity(4)
+    test_mat = np.identity(4)
+    for i in range(100):
+        swap_i = np.random.randint(0,4,(2,))
+        amount = np.random.randn(4)
+        test_mat[swap_i[0]] += test_mat[swap_i[1]] * amount
+        test_mat_i = inverse(test_mat)
+        res = matmul(test_mat_i, test_mat)
+        s = np.sum(np.abs(res-I))
+        if s > 1e-6:
+            print(s)
+            print(test_mat)
+            print(res)
 
 if __name__ == "__main__":
-    i = np.identity(4)
-    plt.figure(figsize=(6, 4), dpi=200)
+    plt.figure(dpi=200)
 
-    # test_mat = np.array([
-    #     [0, 1, 10],
-    #     [0, 1, -3],
-    #     [-1, 0, 0],
-    # ])
-    # test_mat_i = inverse(test_mat)
-    # print(matmul(test_mat_i, test_mat))
+    # testing()
     filename = "testfile.txt"
     closed_form(filename, 3, 0)
     newton(filename, 3, 0)
