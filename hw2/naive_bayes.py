@@ -45,7 +45,7 @@ def discrete(
     train_y: np.ndarray,
     test_X: np.ndarray,
     test_y: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     # prior
     prior_train = np.mean(np.array(
         [np.where(train_y == x, 1, 0) for x in range(10)]),
@@ -74,7 +74,7 @@ def discrete(
                 pred_y[d, label] += likelihood[label, test_X[d, pix], pix]
         pred_y[d] += np.log(prior_train)
 
-    return np.argmax(pred_y, axis=1), (pred_y / np.sum(pred_y, axis=1, keepdims=True))
+    return np.argmax(pred_y, axis=1), (pred_y / np.sum(pred_y, axis=1, keepdims=True)), likelihood
 
 
 def infer(mode: Mode = Mode.DISCRETE):
@@ -84,21 +84,36 @@ def infer(mode: Mode = Mode.DISCRETE):
         # binning
         train_X = np.floor(train_X.astype(np.float32) / 8).astype(np.int32)
         test_X = np.floor(test_X.astype(np.float32) / 8).astype(np.int32)
-        pred, posterior = discrete(train_X, train_y, test_X, test_y)
+        pred, posterior, likelihood = discrete(train_X, train_y, test_X, test_y)
+        for i in range(posterior.shape[0]):
+            print("Posterior (in log scale)")
+            for l in range(10):
+                print("{}: {}".format(l, float(posterior[i, l])))
+            print("prediction: {}, ans: {}".format(int(pred[i]), int(test_y[i])))
+            print()
+
+        visualize_discrete(likelihood)
         print("error rate: {:.4f}".format(float(1 - np.mean(np.where(pred == test_y, 1, 0)))))
+
     elif mode == Mode.CONTINUOUS:
         pass
 
-    pass
 
+def visualize_discrete(likelihood: np.ndarray):
+    
+    likelihood = np.exp(likelihood) # original scale (10, 32, 28*28)
+    black = np.sum(likelihood[:,16:, :], axis=1)
+    white = np.sum(likelihood[:, :16, :], axis=1)
+    img = np.where(black > white, 1, 0)
+    for la in range(10):
+        print(f"label {la}")
+        for i in range(28 * 28):
+            print(int(img[la, i]), end='')
 
-def visualize(img_orig: np.ndarray):
-    assert img_orig.shape == (28 * 28, 0)
-    img = np.where(img_orig < 128, 0, 1)
-    for i in range(28 * 28):
-        if i % 28 == 0:
-            print()
-        print(img[i], end='')
+            if i % 28 == 27:
+                print()
+        print()
+
 
 
 if __name__ == "__main__":
