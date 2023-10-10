@@ -3,14 +3,6 @@ from typing import List
 import math
 
 
-def beta(a: float, b: float):
-    pass
-
-
-def gamma():
-    pass
-
-
 def C(N: int, m: int):
     return math.factorial(N) / (math.factorial(N - m) * math.factorial(m))
 
