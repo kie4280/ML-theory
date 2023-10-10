@@ -11,8 +11,15 @@ class Mode(Enum):
     DISCRETE = 0
     CONTINUOUS = 1
 
+
 # Taken from https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
-def progressBar(iterable, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+def progressBar(iterable,
+                prefix='',
+                suffix='',
+                decimals=1,
+                length=100,
+                fill='█',
+                printEnd="\r"):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -25,12 +32,15 @@ def progressBar(iterable, prefix = '', suffix = '', decimals = 1, length = 100, 
         printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
     """
     total = len(iterable)
+
     # Progress Bar Printing Function
-    def printProgressBar (iteration):
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    def printProgressBar(iteration):
+        percent = ("{0:." + str(decimals) + "f}").format(
+            100 * (iteration / float(total)))
         filledLength = int(length * iteration // total)
         bar = fill * filledLength + '-' * (length - filledLength)
-        print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+        print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
+
     # Initial Call
     printProgressBar(0)
     # Update Progress Bar
@@ -39,6 +49,7 @@ def progressBar(iterable, prefix = '', suffix = '', decimals = 1, length = 100, 
         printProgressBar(i + 1)
     # Print New Line on Complete
     print()
+
 
 def discrete(
     train_X: np.ndarray,
@@ -67,42 +78,104 @@ def discrete(
             likelihood[label, bin] = freq_bi
 
     print("finished likelihood cal")
-    pred_y = np.ndarray((test_X.shape[0], 10))
+    pred_y = np.zeros((test_X.shape[0], 10))
     for d in progressBar(range(test_X.shape[0]), length=50):
         for label in range(10):
             for pix in range(28 * 28):
                 pred_y[d, label] += likelihood[label, test_X[d, pix], pix]
         pred_y[d] += np.log(prior_train)
 
-    return np.argmax(pred_y, axis=1), (pred_y / np.sum(pred_y, axis=1, keepdims=True)), likelihood
+    return np.argmax(
+        pred_y,
+        axis=1), (pred_y / np.sum(pred_y, axis=1, keepdims=True)), likelihood
+
+
+def continous(
+    train_X: np.ndarray,
+    train_y: np.ndarray,
+    test_X: np.ndarray,
+    test_y: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Returns (prediction, log probability, mean and variance matrix)
+    """
+    # prior
+    prior_train = np.mean(np.array(
+        [np.where(train_y == x, 1, 0) for x in range(10)]),
+                          axis=1)
+    # print(prior_train)
+    # print(np.sum(prior_train))
+
+    # likelihood
+    pred_y = np.zeros((test_X.shape[0], ))
+
+    likelihood = np.zeros((10, 2, 28 * 28))  # log likelihood
+
+    for label in range(10):
+        label_mask = np.where(train_y == label, True, False)
+        match_la = train_X[label_mask]  # (?, 28*28)
+        mean = np.mean(match_la, axis=0)
+        var = np.mean(match_la**2, axis=0) - mean**2
+        likelihood[label, 0] = mean
+        likelihood[label, 1] = var + 1000
+
+    print("finished likelihood cal")
+    pred_y = np.zeros((test_X.shape[0], 10))
+    for d in progressBar(range(test_X.shape[0]), length=50):
+        for label in range(10):
+            pred_y[d, label] = -1 / 2 * np.sum(np.log(
+                2 * np.pi * likelihood[label, 1])) - np.sum(
+                    (test_X[d] - likelihood[label, 0])**2 /
+                    (2 * likelihood[label, 1]))
+        pred_y[d] += np.log(prior_train)
+
+    return np.argmax(
+        pred_y,
+        axis=1), (pred_y / np.sum(pred_y, axis=1, keepdims=True)), likelihood
 
 
 def infer(mode: Mode = Mode.DISCRETE):
     global train_X, train_y, test_X, test_y
     if mode == Mode.DISCRETE:
-
         # binning
         train_X = np.floor(train_X.astype(np.float32) / 8).astype(np.int32)
         test_X = np.floor(test_X.astype(np.float32) / 8).astype(np.int32)
-        pred, posterior, likelihood = discrete(train_X, train_y, test_X, test_y)
+        pred, posterior, likelihood = discrete(train_X, train_y, test_X,
+                                               test_y)
         for i in range(posterior.shape[0]):
             print("Posterior (in log scale)")
             for l in range(10):
                 print("{}: {}".format(l, float(posterior[i, l])))
-            print("prediction: {}, ans: {}".format(int(pred[i]), int(test_y[i])))
+            print("prediction: {}, ans: {}".format(int(pred[i]),
+                                                   int(test_y[i])))
             print()
 
         visualize_discrete(likelihood)
-        print("error rate: {:.4f}".format(float(1 - np.mean(np.where(pred == test_y, 1, 0)))))
+        print("error rate: {:.4f}".format(
+            float(1 - np.mean(np.where(pred == test_y, 1, 0)))))
 
     elif mode == Mode.CONTINUOUS:
-        pass
+        train_X = train_X.astype(np.float32)
+        test_X = test_X.astype(np.float32)
+        pred, posterior, likelihood = continous(train_X, train_y, test_X,
+                                                test_y)
+        # for i in range(posterior.shape[0]):
+        #     print("Posterior (in log scale)")
+        #     for l in range(10):
+        #         print("{}: {}".format(l, float(posterior[i, l])))
+        #     print("prediction: {}, ans: {}".format(int(pred[i]),
+        #                                            int(test_y[i])))
+        #     print()
+
+        visualize_continuos(likelihood)
+        print("error rate: {:.4f}".format(
+            float(1 - np.mean(np.where(pred == test_y, 1, 0)))))
 
 
 def visualize_discrete(likelihood: np.ndarray):
-    
-    likelihood = np.exp(likelihood) # original scale (10, 32, 28*28)
-    black = np.sum(likelihood[:,16:, :], axis=1)
+
+    likelihood = np.exp(likelihood)  # original scale (10, 32, 28*28)
+    black = np.sum(likelihood[:, 16:, :], axis=1)
     white = np.sum(likelihood[:, :16, :], axis=1)
     img = np.where(black > white, 1, 0)
     for la in range(10):
@@ -115,6 +188,20 @@ def visualize_discrete(likelihood: np.ndarray):
         print()
 
 
+def visualize_continuos(likelihood: np.ndarray):
+
+    for la in range(10):
+        print(f"label {la}")
+        for i in range(28 * 28):
+            pix = int(likelihood[la, 0, i])
+            pix = 1 if pix > 128 else 0
+            print(pix, end='')
+
+            if i % 28 == 27:
+                print()
+        print()
+
 
 if __name__ == "__main__":
-    infer()
+    infer(Mode.CONTINUOUS)
+    pass
