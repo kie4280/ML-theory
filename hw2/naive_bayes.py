@@ -159,13 +159,13 @@ def infer(mode: Mode = Mode.DISCRETE):
         test_X = test_X.astype(np.float32)
         pred, posterior, likelihood = continous(train_X, train_y, test_X,
                                                 test_y)
-        # for i in range(posterior.shape[0]):
-        #     print("Posterior (in log scale)")
-        #     for l in range(10):
-        #         print("{}: {}".format(l, float(posterior[i, l])))
-        #     print("prediction: {}, ans: {}".format(int(pred[i]),
-        #                                            int(test_y[i])))
-        #     print()
+        for i in range(posterior.shape[0]):
+            print("Posterior (in log scale)")
+            for l in range(10):
+                print("{}: {}".format(l, float(posterior[i, l])))
+            print("prediction: {}, ans: {}".format(int(pred[i]),
+                                                   int(test_y[i])))
+            print()
 
         visualize_continuos(likelihood)
         print("error rate: {:.4f}".format(

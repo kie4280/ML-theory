@@ -10,7 +10,6 @@ def C(N: int, m: int):
 def online(data: List[str], a: float, b: float):
     for i, d in enumerate(data):
         nums = np.array([int(x) for x in list(d.strip("\n"))])
-        be = beta(a, b)
         MLE_p = np.mean(nums)
         N = nums.shape[0]
         head = np.sum(nums).item()
