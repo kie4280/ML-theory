@@ -55,47 +55,42 @@ def sequential_estimator(m:float, s:float, iters:int=100000):
        
 
 def draw_graph(points:np.ndarray, weight:np.ndarray, a:float, mean_list:List[np.ndarray], var_list:List[np.ndarray]):
-    a_inv = 1/a
     plt.figure()
     plt.subplot(2,2,1)
     x_GT = np.linspace(-2, 2, 100)
     phi = np.array([x_GT ** i for i in range(weight.shape[0])]).T
     y_GT = phi @ weight
     plt.plot(x_GT, y_GT, color="black")
-    plt.plot(x_GT, y_GT - a_inv, color="red")
-    plt.plot(x_GT, y_GT + a_inv, color="red")
+    plt.plot(x_GT, y_GT - a, color="red")
+    plt.plot(x_GT, y_GT + a, color="red")
     plt.title("GT")
-    plt.ylim(-20, 20)
 
     plt.subplot(2,2,2)
     plt.scatter(points[:,0], points[:,1])
     y = (phi @ mean_list[2]).squeeze()
     s = np.diag(phi @ var_list[2] @ phi.T)
     plt.plot(x_GT, y, color="black")
-    plt.plot(x_GT, y - a_inv - s, color="red")
-    plt.plot(x_GT, y + a_inv + s, color="red")
-    plt.title("Final prediction")
-    plt.ylim(-20, 20)
+    plt.plot(x_GT, y - a - s, color="red")
+    plt.plot(x_GT, y + a + s, color="red")
+    plt.title("Prediction result")
 
     plt.subplot(2,2,3)
     plt.scatter(points[:10,0], points[:10,1])
     y = (phi @ mean_list[0]).squeeze()
     s = np.diag(phi @ var_list[0] @ phi.T)
     plt.plot(x_GT, y, color="black")
-    plt.plot(x_GT, y - a_inv - s, color="red")
-    plt.plot(x_GT, y + a_inv + s, color="red")
+    plt.plot(x_GT, y - a - s, color="red")
+    plt.plot(x_GT, y + a + s, color="red")
     plt.title("After 10 samples")
-    plt.ylim(-20, 20)
 
     plt.subplot(2,2,4)
     plt.scatter(points[:50,0], points[:50,1])
     y = (phi @ mean_list[1]).squeeze()
     s = np.diag(phi @ var_list[1] @ phi.T)
     plt.plot(x_GT, y, color="black")
-    plt.plot(x_GT, y - a_inv - s, color="red")
-    plt.plot(x_GT, y + a_inv + s, color="red")
+    plt.plot(x_GT, y - a - s, color="red")
+    plt.plot(x_GT, y + a + s, color="red")
     plt.title("After 50 samples")
-    plt.ylim(-20, 20)
 
     plt.show()
 
@@ -112,8 +107,8 @@ def baysian_LR(b:float, n:int, a:float, weight:np.ndarray, iters:int=300):
         # x, y = tests[i]# sanity check
         phi = np.expand_dims(np.array([x**i for i in range(n)]), axis=0)
         var_inv = np.linalg.inv(prior_var)
-        posterior_var = np.linalg.inv(var_inv + a * phi.T @ phi)
-        posterior_mean = posterior_var @ (a * phi.T * y + var_inv @ prior_mean)
+        posterior_var = np.linalg.inv(var_inv + 1/a * phi.T @ phi)
+        posterior_mean = posterior_var @ (1/a * phi.T * y + var_inv @ prior_mean)
 
         print("Add data point: ({}, {})".format(x, y))
         print("Posterior mean:")
@@ -144,7 +139,7 @@ if __name__ == "__main__":
     # test_gaussian()
     # test_poly()
     # sequential_estimator(0,5)
-    baysian_LR(1, 4, 1, np.array([1,2,3,4]))
+    baysian_LR(1, 3, 3, np.array([1,2,3]))
 
 
     
