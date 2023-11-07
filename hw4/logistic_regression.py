@@ -18,10 +18,32 @@ class DataParam:
         self.vy = vy
 
 
+def GD(weight: np.ndarray, data: np.ndarray, label: np.ndarray, lr: float):
+    gradient = data.T @ (1 / (1 + np.exp(-data @ weight)) - label)
+    return lr * gradient
+
+
+def newton(weight: np.ndarray, data: np.ndarray, label: np.ndarray, lr: float):
+    N = data.shape[0]
+    D = np.zeros((N, N))
+    np.fill_diagonal(D,
+                     (np.exp(-data @ weight) / (1 + np.exp(-data @ weight))))
+    hessian = data.T @ D @ data
+    gradient = data.T @ (1 / (1 + np.exp(-data @ weight)) - label)
+    try:
+        h_inv = np.linalg.inv(hessian)
+    except np.linalg.LinAlgError:
+        h_inv = lr * np.identity(3)
+        print("newton failed")
+    return h_inv @ gradient
+
+def confusion_matrix(pred:np.ndarray, target:np.ndarray):
+    print("Confusion matrix")
+    pass
+
 def logistic(N: int,
              D1: DataParam,
              D2: DataParam,
-             method: Literal["newton", "GD"] = "newton",
              max_iters=300,
              lr=1e-2):
     ds1 = []
@@ -37,26 +59,44 @@ def logistic(N: int,
 
     data = np.ones((2 * N, 3))
     data[0:N, :2] = ds1
-    data[N:2*N, :2] = ds2
+    data[N:2 * N, :2] = ds2
     label = np.zeros((2 * N, 1))
     label[N:] = 1
 
     plt.figure()
     plt.subplot(1, 3, 1)
+    plt.title("GT")
     plt.scatter(ds1[:, 0], ds1[:, 1], color='blue')
     plt.scatter(ds2[:, 0], ds2[:, 1], color='red')
 
-    weight = np.ones((3,1))
+    weight = np.zeros((3, 1))
     for it in range(max_iters):
-        gradient = data.T @ (1 / (1 + np.exp(-data @ weight)) - label)
-        weight -= lr * gradient
-        if np.abs(gradient).sum() < 1e-8:
+        change = GD(weight, data, label, lr)
+        weight -= change
+        if np.abs(change).sum() < 1e-2:
+            print(f"spent {it+1} iterations")
             break
 
     pred = np.squeeze(1 / (1 + np.exp(-data @ weight)))
     pred_0 = data[pred <= 0.5, :]
     pred_1 = data[pred > 0.5, :]
     plt.subplot(1, 3, 2)
+    plt.title("Gradient descent")
+    plt.scatter(pred_0[:, 0], pred_0[:, 1], color='blue')
+    plt.scatter(pred_1[:, 0], pred_1[:, 1], color='red')
+
+    weight = np.zeros((3, 1))
+    for it in range(max_iters):
+        change = newton(weight, data, label, lr)
+        weight -= change
+        if np.abs(change).sum() < 1e-2:
+            print(f"spent {it+1} iterations")
+            break
+    pred = np.squeeze(1 / (1 + np.exp(-data @ weight)))
+    pred_0 = data[pred <= 0.5, :]
+    pred_1 = data[pred > 0.5, :]
+    plt.subplot(1, 3, 3)
+    plt.title("Newton's method")
     plt.scatter(pred_0[:, 0], pred_0[:, 1], color='blue')
     plt.scatter(pred_1[:, 0], pred_1[:, 1], color='red')
 
