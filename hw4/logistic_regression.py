@@ -27,7 +27,7 @@ def newton(weight: np.ndarray, data: np.ndarray, label: np.ndarray, lr: float):
     N = data.shape[0]
     D = np.zeros((N, N))
     np.fill_diagonal(D,
-                     (np.exp(-data @ weight) / (1 + np.exp(-data @ weight))))
+                     (np.exp(-data @ weight) / (1 + np.exp(-data @ weight)) ** 2))
     hessian = data.T @ D @ data
     gradient = data.T @ (1 / (1 + np.exp(-data @ weight)) - label)
     try:
@@ -44,7 +44,7 @@ def confusion_matrix(pred:np.ndarray, target:np.ndarray):
 def logistic(N: int,
              D1: DataParam,
              D2: DataParam,
-             max_iters=300,
+             max_iters=150,
              lr=1e-2):
     ds1 = []
     ds2 = []
@@ -69,7 +69,7 @@ def logistic(N: int,
     plt.scatter(ds1[:, 0], ds1[:, 1], color='blue')
     plt.scatter(ds2[:, 0], ds2[:, 1], color='red')
 
-    weight = np.zeros((3, 1))
+    weight = np.random.standard_normal((3, 1))
     for it in range(max_iters):
         change = GD(weight, data, label, lr)
         weight -= change
@@ -77,6 +77,8 @@ def logistic(N: int,
             print(f"spent {it+1} iterations")
             break
 
+    print("GD weight", weight)
+    print()
     pred = np.squeeze(1 / (1 + np.exp(-data @ weight)))
     pred_0 = data[pred <= 0.5, :]
     pred_1 = data[pred > 0.5, :]
@@ -92,6 +94,8 @@ def logistic(N: int,
         if np.abs(change).sum() < 1e-2:
             print(f"spent {it+1} iterations")
             break
+
+    print("Newton weight", weight)
     pred = np.squeeze(1 / (1 + np.exp(-data @ weight)))
     pred_0 = data[pred <= 0.5, :]
     pred_1 = data[pred > 0.5, :]
