@@ -1,6 +1,7 @@
 from typing import Literal
 import numpy as np
 from matplotlib import pyplot as plt
+from utils import confusion
 from random_generator import univar_gaussian
 from argparse import ArgumentParser
 
@@ -26,8 +27,8 @@ def GD(weight: np.ndarray, data: np.ndarray, label: np.ndarray, lr: float):
 def newton(weight: np.ndarray, data: np.ndarray, label: np.ndarray, lr: float):
     N = data.shape[0]
     D = np.zeros((N, N))
-    np.fill_diagonal(D,
-                     (np.exp(-data @ weight) / (1 + np.exp(-data @ weight)) ** 2))
+    np.fill_diagonal(D, (np.exp(-data @ weight) /
+                         (1 + np.exp(-data @ weight))**2))
     hessian = data.T @ D @ data
     gradient = data.T @ (1 / (1 + np.exp(-data @ weight)) - label)
     try:
@@ -37,15 +38,13 @@ def newton(weight: np.ndarray, data: np.ndarray, label: np.ndarray, lr: float):
         print("newton failed")
     return h_inv @ gradient
 
-def confusion_matrix(pred:np.ndarray, target:np.ndarray):
+
+def confusion_matrix(pred: np.ndarray, target: np.ndarray):
     print("Confusion matrix")
     pass
 
-def logistic(N: int,
-             D1: DataParam,
-             D2: DataParam,
-             max_iters=150,
-             lr=1e-2):
+
+def logistic(N: int, D1: DataParam, D2: DataParam, max_iters=150, lr=1e-2):
     ds1 = []
     ds2 = []
     for n in range(N):
@@ -69,7 +68,7 @@ def logistic(N: int,
     plt.scatter(ds1[:, 0], ds1[:, 1], color='blue')
     plt.scatter(ds2[:, 0], ds2[:, 1], color='red')
 
-    weight = np.random.standard_normal((3, 1))
+    weight = np.zeros((3, 1))
     for it in range(max_iters):
         change = GD(weight, data, label, lr)
         weight -= change
@@ -82,6 +81,15 @@ def logistic(N: int,
     pred = np.squeeze(1 / (1 + np.exp(-data @ weight)))
     pred_0 = data[pred <= 0.5, :]
     pred_1 = data[pred > 0.5, :]
+    cf = confusion((pred > 0.5).astype(np.int32), label.squeeze(), 0)
+    print("confusion matrix")
+    print(cf)
+    print()
+    speci = cf.iloc[1, 1]
+    sensi = cf.iloc[0, 0]
+    print(f"sensitivity: {sensi/N}")
+    print(f"specificity: {speci/N}")
+    print("\n\n")
     plt.subplot(1, 3, 2)
     plt.title("Gradient descent")
     plt.scatter(pred_0[:, 0], pred_0[:, 1], color='blue')
@@ -99,6 +107,19 @@ def logistic(N: int,
     pred = np.squeeze(1 / (1 + np.exp(-data @ weight)))
     pred_0 = data[pred <= 0.5, :]
     pred_1 = data[pred > 0.5, :]
+    cf = confusion((pred > 0.5).astype(np.int32),
+                   label.squeeze(),
+                   0,
+                   columns=["pred cluster 1", "pred cluster 2"],
+                   index=["in cluster 1", "in cluster 2"])
+    print("confusion matrix")
+    print(cf)
+    print()
+    speci = cf.iloc[1, 1]
+    sensi = cf.iloc[0, 0]
+    print(f"sensitivity: {sensi/N}")
+    print(f"specificity: {speci/N}")
+    print("\n\n")
     plt.subplot(1, 3, 3)
     plt.title("Newton's method")
     plt.scatter(pred_0[:, 0], pred_0[:, 1], color='blue')
@@ -112,10 +133,10 @@ if __name__ == "__main__":
     my1 = 1
     vx1 = 2
     vy1 = 2
-    mx2 = 10
-    my2 = 10
-    vx2 = 2
-    vy2 = 2
+    mx2 = 3
+    my2 = 3
+    vx2 = 4
+    vy2 = 4
     D1 = DataParam(mx1, my1, vx1, vy1)
     D2 = DataParam(mx2, my2, vx2, vy2)
-    logistic(100, D1, D2)
+    logistic(50, D1, D2)
