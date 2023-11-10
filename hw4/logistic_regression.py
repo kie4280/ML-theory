@@ -1,4 +1,3 @@
-from typing import Literal
 import numpy as np
 from matplotlib import pyplot as plt
 from utils import confusion
@@ -129,14 +128,9 @@ def logistic(N: int, D1: DataParam, D2: DataParam, max_iters=150, lr=1e-2):
 
 
 if __name__ == "__main__":
-    mx1 = 1
-    my1 = 1
-    vx1 = 2
-    vy1 = 2
-    mx2 = 3
-    my2 = 3
-    vx2 = 4
-    vy2 = 4
-    D1 = DataParam(mx1, my1, vx1, vy1)
-    D2 = DataParam(mx2, my2, vx2, vy2)
-    logistic(50, D1, D2)
+    D1_1 = DataParam(1, 1, 2, 2)
+    D2_1= DataParam(10, 10, 2, 2)
+    D1_2 = DataParam(1, 1, 2, 2)
+    D2_2= DataParam(3, 3, 4, 4)
+    # logistic(50, D1_1, D2_1)
+    logistic(50, D1_2, D2_2)

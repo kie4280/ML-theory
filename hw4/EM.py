@@ -65,7 +65,7 @@ def assign_label(w: np.ndarray, true_label: np.ndarray):
     return np.argmax(p_count, axis=1)
 
 
-def main(max_iters: int = 1):
+def main(max_iters: int = 30):
     grey = np.where(train_X < 128, 0, 1)
     n = grey.shape[0]
     # initial guess
@@ -107,6 +107,7 @@ def main(max_iters: int = 1):
         print("\n\n")
 
     print(f"total iterations to converge {iter+1}")
+    print(f"total error rate {1-(np.sum(pred == train_y) / n)}")
 
 if __name__ == "__main__":
     main()
