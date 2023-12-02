@@ -22,7 +22,7 @@ def read_data(folder_path:str="./data/") -> List[np.ndarray]:
     data = [np.array(data[i]) for i in range(4)]
     return data
 
-def task1(data:List[np.ndarray]):
+def task1(data:List[np.ndarray]) -> None:
     """
     Comparison of linear, polynomial and RBF kernels
     param data: the input data
@@ -47,13 +47,10 @@ def task1(data:List[np.ndarray]):
 
 
 
-def task2(data:List[np.ndarray]):
+def task2(data:List[np.ndarray]) -> None:
     """
     Grid search for best parameters of each kernel
-    :param training_image: training images
-    :param training_label: training labels
-    :param testing_image: testing images
-    :param testing_label: testing labels
+    :param data: the input data
     :return: None
     """
 
@@ -80,14 +77,10 @@ def task2(data:List[np.ndarray]):
             best_parameter.append(best_para)
             max_accuracy.append(max_acc)
         elif name == 'Polynomial':
-            # cost = [10 ** i for i in range(-1, 2)]
-            # degree = [i for i in range(0, 3)]
-            # gamma = [10 ** i for i in range(-1, 1)]
-            # constant = [i for i in range(-1, 2)]
-            cost = []
-            degree = []
-            gamma = []
-            constant = []
+            cost = [10 ** i for i in range(-1, 2)]
+            degree = [i for i in range(0, 3)]
+            gamma = [10 ** i for i in range(-1, 1)]
+            constant = [i for i in range(-1, 2)]
             for c in cost:
                 for d in degree:
                     for g in gamma:
@@ -101,8 +94,8 @@ def task2(data:List[np.ndarray]):
             best_parameter.append(best_para)
             max_accuracy.append(max_acc)
         elif name == 'RBF':
-            cost = [2 ** i for i in range(-2, 6)]
-            gamma = [2** i for i in range(-3, 7)]
+            cost = [10 ** i for i in range(-3, 3)]
+            gamma = [10 ** i for i in range(-3, 3)]
             heat_data = []
             for c in cost:
                 d_row = []
@@ -156,10 +149,7 @@ def cross_val(training_image: np.ndarray, training_label: np.ndarray, parameters
 def task3(data:List[np.ndarray]) -> None:
     """
     Combination of linear and RBF kernels
-    :param training_image: training images
-    :param training_label: training labels
-    :param testing_image: testing images
-    :param testing_label: testing labels
+    :param data: the input data
     :return: None
     """
     # Parameters
