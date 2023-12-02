@@ -7,6 +7,8 @@ from typing import Tuple
 def read_data(data_loc: str = "./data/input.data") -> np.ndarray:
     """
     Read in data from the file specified by data_loc
+    :param data_loc: location of input.data
+    :return: numpy array
     """
     data = None
     with open(data_loc) as f:
@@ -21,9 +23,12 @@ def read_data(data_loc: str = "./data/input.data") -> np.ndarray:
 
 
 def make_kernel(data: np.ndarray, length: float,
-                scale_mixture: float):
+                scale_mixture: float) -> np.ndarray:
     """
     Take the x component of data and make the rational quadratic kernel
+    :param length: length param of rqk
+    :param scale_mixture: param of rqk
+    :return: kernel
     """
     x = data
     n = x.shape[0]
@@ -39,6 +44,18 @@ def GP(params: Tuple,
        beta: float = 5,
        points: int = 200,
        visualization: bool = False):
+    
+    """
+    Run the gaussian regression
+    :param params: a (length, scale_mixture) tuple
+    :param data: input data (numpy)
+    :param beta: the precision of the noisy observation
+    :param points: the number of points in the linspace of testing x
+    :param visualization: whether to plot or use as objective function
+    :return: None
+    """
+
+
     length, scale_mixture = params
     # print(var, length, scale_mixture, data, beta, points, visualization)
     x_plot = np.linspace(-60, 60, points) # this is the testing data
@@ -74,11 +91,17 @@ def GP(params: Tuple,
     C_N = C[:N, :N]
     # returning the marginal negative log-likelihood to compute the loss to be fed into 
     # scipy.optimize.minimize
-    return -1 / 2 * np.log(np.linalg.det(
-        C_N)) - 1 / 2 * y.T @ C_inv @ y - N / 2 * np.log(2 * np.pi)
+    return 1 / 2 * np.log(np.linalg.det(
+        C_N)) + 1 / 2 * y.T @ C_inv @ y + N / 2 * np.log(2 * np.pi)
 
 
 def optimize_param(data: np.ndarray, beta: float = 5):
+    """
+    Optimize the parameters using scipy.optimize.minimize
+    :param data: input data
+    :param beta: precision of noisy observation
+    :return the optimal parameters
+    """
     mini = minimize(GP, x0=np.random.uniform(5,10,(2, )), args=(data, beta, 200, False))
 
     length, scale_mixture = mini.x
@@ -88,7 +111,7 @@ def optimize_param(data: np.ndarray, beta: float = 5):
 
 if __name__ == "__main__":
     train = read_data()
-    i = GP((1,1),train, visualization=True)
+    i = GP((1,0.01),train, visualization=True)
     # print(i)
     i = optimize_param(train)
     GP(i, train, visualization=True)
