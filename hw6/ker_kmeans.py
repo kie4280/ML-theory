@@ -55,6 +55,7 @@ def clustering(kernel: np.ndarray, cluster: np.ndarray, K: int = 2):
 
 
 def initial_kmeans(X: np.ndarray,
+                   spatial_grid:np.ndarray,
                    K: int = 2,
                    initType: str = "pick") -> np.ndarray:
     """
@@ -64,8 +65,23 @@ def initial_kmeans(X: np.ndarray,
     """
 
     if initType == "kmeans++":
-        pass
-        center_idx = np.zeros(K)
+        center_idx = []
+        center_idx.append(np.random.choice(np.arange(10000), size=1)[0])
+        found = 1
+        while (found<K):
+            dist = np.zeros(10000)
+            for i in range(10000):
+                min_dist = np.Inf
+                for f in range(found):
+                    tmp = np.linalg.norm(spatial_grid[i,:]-spatial_grid[center_idx[f],:])
+                    if tmp<min_dist:
+                        min_dist = tmp
+                dist[i] = min_dist
+            dist = dist/np.sum(dist)
+            idx = np.random.choice(np.arange(10000), 1, p=dist)
+            center_idx.append(idx[0])
+            found += 1
+        center_idx = np.array(center_idx)
     elif initType == "pick":
         center_idx = np.random.choice(X.shape[0], size=K, replace=False)
     else:
@@ -108,13 +124,13 @@ def main():
     os.makedirs(args.output, exist_ok=True)
     start_t = time.time()
     img = read_img(args.img)
-    W = RBF_kernel(img)
+    spatial, W = RBF_kernel(img)
 
     # w_comp = np.load("../../MachineLearning/kernel.npy")
     # print(np.sum(np.abs(W-w_comp)))
     print("made kernel in {}".format(time.time() - start_t))
 
-    init_cluster = initial_kmeans(W, args.clusters, initType=args.init)
+    init_cluster = initial_kmeans(W, spatial, args.clusters, initType=args.init)
     cluster = kmeans(args, W, img, init_cluster)
 
 

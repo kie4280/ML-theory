@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
+from typing import Tuple
 
 COLOR = [[0, 102, 204], [51, 204, 204], [153, 102, 51], [153, 153, 153],
          [12, 23, 100], [145, 100, 0]]
@@ -39,7 +40,7 @@ def make_kernel(data: np.ndarray,
 
 def RBF_kernel(X: np.ndarray,
                gamma_c: float = 1 / (255 * 255),
-               gamma_s: float = 1 / 10000) -> np.ndarray:
+               gamma_s: float = 1 / 10000) -> Tuple[np.ndarray, np.ndarray]:
     """
     :param x: the input image
     :param gamma_c: color similarity coef
@@ -61,7 +62,7 @@ def RBF_kernel(X: np.ndarray,
     RBF_c = np.exp(-gamma_c * dist_c)  #(10000,10000)
     k = np.multiply(RBF_s, RBF_c)  #(10000,10000)
 
-    return k
+    return X_s, k
 
 
 def visualize(im: np.ndarray,
