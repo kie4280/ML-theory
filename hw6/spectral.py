@@ -1,40 +1,28 @@
 import numpy as np
-from utils import read_img
+from utils import read_img, make_kernel, RBF_kernel
 from argparse import ArgumentParser
+from kmeans import KMeans
+import time
+import matplotlib.pyplot as plt
+from typing import Tuple
 
+COLOR = [[0, 102, 204], [51, 204, 204], [153, 102, 51], [153, 153, 153],
+         [12, 23, 100], [145, 100, 0]]
 
-def make_kernel(data: np.ndarray,
-                gamma_c: float = 1,
-                gamma_s: float = 1) -> np.ndarray:
-    """
-    :param x: the input image
-    :param gamma_c: color similarity coef
-    :param gamma_s: spatial similarity coef
-    Return: kernel
-    """
-    img = data.reshape(data.shape[0] * data.shape[1], 3)
-    x = np.broadcast_to(np.expand_dims(img.astype(np.int32), axis=0),
-                        (img.shape[0], img.shape[0], 3))
-    idx = np.arange(img.shape[0])
-    idx = np.expand_dims(np.stack([idx / img.shape[0], idx % img.shape[0]],
-                                  axis=1),
-                         axis=0)
-    idx = np.broadcast_to(idx, (img.shape[0], img.shape[0], 2))
-    color_sim = np.sum((x - np.moveaxis(x, 0, 1))**2, axis=2)
-    spatial_sim = np.sum((idx - np.moveaxis(idx, 0, 1))**2, axis=2)
-    K = np.exp(-gamma_s * spatial_sim - gamma_c * color_sim)
-    # print(K.shape)
-
-    return K
-
-
-def compute_D(w: np.ndarray) -> np.ndarray:
+def compute_LD(W: np.ndarray, normalized:bool=False) -> Tuple[np.ndarray, np.ndarray]:
     """
     :param w: the similarity matrix W
     Return: the degree of w
     """
-    d = np.diagflat(np.sum(w, axis=1))
-    return d
+    d_diag = np.sum(W, axis=1)
+    D = np.diagflat(d_diag)
+    L = D - W
+
+    if normalized:
+        d_diag = 1 / np.sqrt(d_diag)
+        d = np.diagflat(d_diag) 
+        L = d @ L @ d
+    return L, D
 
 def eigen_decompose(L:np.ndarray) -> np.ndarray:
     """
@@ -55,17 +43,36 @@ def main():
                         choices=["normalized", "ratio"],
                         type=str)
     
+    start_t = time.time()
     args = parser.parse_args()
     img = read_img()
-    W = make_kernel(img)
+    W = RBF_kernel(img.reshape(-1, 3))
+    print("made kernel in {}".format(time.time() - start_t))
     if args.method == "normalized":
+        L, D = compute_LD(W, normalized=True)
         pass
     elif args.method == "ratio":
-        D = compute_D(W)
-        L = D - W
+        L, D = compute_LD(W)
+        
+        np.save("lapla.npy", L)
+        # L = np.load("lapla.npy")
+        start_t = time.time()
         eigen = eigen_decompose(L)
-        eigen = eigen[:, 0:args.c]
-        print(eigen)
+        np.save("eigen.npy", eigen)
+        # eigen = np.load("eigen.npy")
+        print("eigen decompose in {}".format(time.time() - start_t))
+        eigen = eigen[:, 0:args.clusters]
+        print(eigen[:,0].min(), eigen[:,0].max())
+        k = KMeans()
+        cluster = k.cluster(eigen, img, max_iters=100)
+        print(k.get_means())
+        im = np.array(COLOR)[cluster]
+        im.resize(img.shape)
+        plt.figure(dpi=300)
+        plt.imshow(im)
+        plt.show()
+        print(np.sum(cluster))
+
 
 if __name__ == "__main__":
     main()

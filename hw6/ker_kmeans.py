@@ -1,27 +1,122 @@
+from matplotlib import os
 import numpy as np
-from utils import read_img
+from utils import read_img, RBF_kernel, visualize
 from argparse import ArgumentParser
+import time
+import matplotlib.pyplot as plt
 
-def make_kernel(data: np.ndarray,
-                gamma_c: float = 1,
-                gamma_s: float = 1) -> np.ndarray:
-    """
-    :param x: the input image
-    :param gamma_c: color similarity coef
-    :param gamma_s: spatial similarity coef
-    Return: kernel
-    """
-    img = data.reshape(data.shape[0] * data.shape[1], 3)
-    x = np.broadcast_to(np.expand_dims(img.astype(np.int32), axis=0),
-                        (img.shape[0], img.shape[0], 3))
-    idx = np.arange(img.shape[0])
-    idx = np.expand_dims(np.stack([idx / img.shape[0], idx % img.shape[0]],
-                                  axis=1),
-                         axis=0)
-    idx = np.broadcast_to(idx, (img.shape[0], img.shape[0], 2))
-    color_sim = np.sum((x - np.moveaxis(x, 0, 1))**2, axis=2)
-    spatial_sim = np.sum((idx - np.moveaxis(idx, 0, 1))**2, axis=2)
-    K = np.exp(-gamma_s * spatial_sim - gamma_c * color_sim)
-    # print(K.shape)
 
-    return K
+def construct_C(K: int, cluster: np.ndarray) -> np.ndarray:
+    """
+    compute the kernel distance
+    :param K: number of clusters
+    :param cluster: cluster assignment
+    Return sum of kernels in this cluster
+    """
+    C = np.zeros(K, dtype=np.int32)
+    for k in range(K):
+        indicator = np.where(cluster == k, 1, 0)
+        C[k] = np.sum(indicator)
+    return C
+
+
+def distance(C: np.ndarray, K: int, kernel: np.ndarray,
+             cluster: np.ndarray) -> np.ndarray:
+    """
+    compute the kernel distance
+    :param C: C_k in the slides
+    :param K: number of clusters
+    :param cluster: cluster assignment
+    Return kernel distance (10000, K)
+    """
+    dist = np.ones((K, 10000), dtype=np.float32)  # k(x_j, x_j) = 1
+
+    for k in range(K):
+        alpha = np.where(cluster == k, 1, 0)
+        a = alpha.reshape(-1, 1).T
+        second_term = a @ kernel
+        second_term = second_term * 2 / C[k]
+        dist[k] -= second_term.flatten()
+
+        a = alpha.reshape(-1, 1)
+        third_term = np.sum(a.T @ kernel @ a)
+        third_term /= (C[k]**2)
+        dist[k] += third_term
+
+    return dist.T
+
+
+def clustering(kernel: np.ndarray, cluster: np.ndarray, K: int = 2):
+    C = construct_C(K, cluster)
+    dist = distance(C, K, kernel, cluster)
+    new_cluster = np.argmin(dist, axis=1)
+
+    return new_cluster
+
+
+def initial_kmeans(X: np.ndarray,
+                   K: int = 2,
+                   initType: str = "pick") -> np.ndarray:
+    """
+    :param X: (#datapoint,#features) ndarray
+    :param initType: 'pick', 'k_means++'
+    Return: initial cluster assignment
+    """
+
+    if initType == "kmeans++":
+        pass
+        center_idx = np.zeros(K)
+    elif initType == "pick":
+        center_idx = np.random.choice(X.shape[0], size=K, replace=False)
+    else:
+        center_idx = np.zeros(K)
+
+    cluster = np.ones((X.shape[0], ), dtype=np.int32) * 0
+    for i in range(K):
+        cluster[center_idx[i]] = i
+    return cluster
+
+
+def kmeans(args,
+           kernel: np.ndarray,
+           img: np.ndarray,
+           cluster: np.ndarray,
+           max_iters: int = 1000) -> np.ndarray:
+    K = args.clusters
+    for it in range(max_iters):
+        new_cluster = clustering(kernel, cluster, K)
+        diff_cluster = np.sum(new_cluster != cluster)
+        if diff_cluster == 0:
+            break
+        print("iter {} delta {}".format(it + 1, diff_cluster))
+        visualize(img, cluster, it, store=True, output_folder=args.output)
+        cluster = new_cluster
+    return cluster
+
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("--clusters", "-c", default=2, type=int)
+    parser.add_argument("--init",
+                        "-m",
+                        default="pick",
+                        type=str)
+    parser.add_argument("--output", "-o", default="./output", type=str)
+    parser.add_argument("--img", default="image1.png", type=str)
+    args = parser.parse_args()
+
+    os.makedirs(args.output, exist_ok=True)
+    start_t = time.time()
+    img = read_img(args.img)
+    W = RBF_kernel(img)
+
+    # w_comp = np.load("../../MachineLearning/kernel.npy")
+    # print(np.sum(np.abs(W-w_comp)))
+    print("made kernel in {}".format(time.time() - start_t))
+
+    init_cluster = initial_kmeans(W, args.clusters, initType=args.init)
+    cluster = kmeans(args, W, img, init_cluster)
+
+
+if __name__ == "__main__":
+    main()
