@@ -57,14 +57,14 @@ def clustering(kernel: np.ndarray, cluster: np.ndarray, K: int = 2):
 def initial_kmeans(X: np.ndarray,
                    spatial_grid:np.ndarray,
                    K: int = 2,
-                   initType: str = "pick") -> np.ndarray:
+                   init_type: str = "pick") -> np.ndarray:
     """
     :param X: (#datapoint,#features) ndarray
     :param initType: 'pick', 'k_means++'
     Return: initial cluster assignment
     """
 
-    if initType == "kmeans++":
+    if init_type == "kmeans++":
         center_idx = []
         center_idx.append(np.random.choice(np.arange(10000), size=1)[0])
         found = 1
@@ -82,7 +82,7 @@ def initial_kmeans(X: np.ndarray,
             center_idx.append(idx[0])
             found += 1
         center_idx = np.array(center_idx)
-    elif initType == "pick":
+    elif init_type == "pick":
         center_idx = np.random.choice(X.shape[0], size=K, replace=False)
     else:
         center_idx = np.zeros(K)
@@ -130,7 +130,7 @@ def main():
     # print(np.sum(np.abs(W-w_comp)))
     print("made kernel in {}".format(time.time() - start_t))
 
-    init_cluster = initial_kmeans(W, spatial, args.clusters, initType=args.init)
+    init_cluster = initial_kmeans(W, spatial, args.clusters, init_type=args.init)
     cluster = kmeans(args, W, img, init_cluster)
 
 
