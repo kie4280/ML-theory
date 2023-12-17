@@ -55,7 +55,7 @@ def clustering(kernel: np.ndarray, cluster: np.ndarray, K: int = 2):
 
 
 def initial_kmeans(X: np.ndarray,
-                   spatial_grid:np.ndarray,
+                   spatial_grid: np.ndarray,
                    K: int = 2,
                    init_type: str = "pick") -> np.ndarray:
     """
@@ -68,16 +68,17 @@ def initial_kmeans(X: np.ndarray,
         center_idx = []
         center_idx.append(np.random.choice(np.arange(10000), size=1)[0])
         found = 1
-        while (found<K):
+        while (found < K):
             dist = np.zeros(10000)
             for i in range(10000):
                 min_dist = np.Inf
                 for f in range(found):
-                    tmp = np.linalg.norm(spatial_grid[i,:]-spatial_grid[center_idx[f],:])
-                    if tmp<min_dist:
+                    tmp = np.linalg.norm(spatial_grid[i, :] -
+                                         spatial_grid[center_idx[f], :])
+                    if tmp < min_dist:
                         min_dist = tmp
                 dist[i] = min_dist
-            dist = dist/np.sum(dist)
+            dist = dist / np.sum(dist)
             idx = np.random.choice(np.arange(10000), 1, p=dist)
             center_idx.append(idx[0])
             found += 1
@@ -98,6 +99,13 @@ def kmeans(args,
            img: np.ndarray,
            cluster: np.ndarray,
            max_iters: int = 1000) -> np.ndarray:
+    """
+    :param kernel: the input data (#data_pts, features)
+    :param img: the input image
+    :param cluster: the initial cluster assignment
+    :param max_iters: the maximum number of iterations
+    Return: the cluster assignment
+    """
     K = args.clusters
     for it in range(max_iters):
         new_cluster = clustering(kernel, cluster, K)
@@ -105,7 +113,12 @@ def kmeans(args,
         if diff_cluster == 0:
             break
         print("iter {} delta {}".format(it + 1, diff_cluster))
-        visualize(img, cluster, it, store=True, output_folder=args.output)
+        visualize(img,
+                  cluster,
+                  it,
+                  store=True,
+                  show=args.show,
+                  output_folder=args.output)
         cluster = new_cluster
     return cluster
 
@@ -113,24 +126,25 @@ def kmeans(args,
 def main():
     parser = ArgumentParser()
     parser.add_argument("--clusters", "-c", default=2, type=int)
-    parser.add_argument("--init",
-                        "-m",
-                        default="pick",
-                        type=str)
+    parser.add_argument("--init", default="pick", type=str)
     parser.add_argument("--output", "-o", default="./output", type=str)
     parser.add_argument("--img", default="image1.png", type=str)
+    parser.add_argument("--show", action="store_true")
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
     start_t = time.time()
     img = read_img(args.img)
-    spatial, W = RBF_kernel(img)
+    spatial, W = RBF_kernel(img, 0.001, 0.001)
 
     # w_comp = np.load("../../MachineLearning/kernel.npy")
     # print(np.sum(np.abs(W-w_comp)))
     print("made kernel in {}".format(time.time() - start_t))
 
-    init_cluster = initial_kmeans(W, spatial, args.clusters, init_type=args.init)
+    init_cluster = initial_kmeans(W,
+                                  spatial,
+                                  args.clusters,
+                                  init_type=args.init)
     cluster = kmeans(args, W, img, init_cluster)
 
 

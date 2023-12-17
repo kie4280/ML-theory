@@ -1,13 +1,10 @@
 from matplotlib import os
 import numpy as np
-from utils import read_img, RBF_kernel, visualize
+from utils import read_img, RBF_kernel, visualize, COLOR
 from argparse import ArgumentParser
 import time
 import matplotlib.pyplot as plt
 from typing import Tuple
-
-COLOR = [[0, 102, 204], [51, 204, 204], [153, 102, 51], [153, 153, 153],
-         [12, 23, 100], [145, 100, 0]]
 
 
 def compute_LD(W: np.ndarray,
@@ -22,93 +19,18 @@ def compute_LD(W: np.ndarray,
 
     if normalized:
         d_diag = 1 / np.sqrt(d_diag)
-        d = np.diagflat(d_diag)
+        d = np.diag(d_diag)
         L = d @ L @ d
     return L, D
 
 
-# def E_step(L: np.ndarray, means: np.ndarray, K: int = 2) -> np.ndarray:
-#     dist = np.zeros((L.shape[0], K), dtype=np.float64)
-#     for k in range(K):
-#         m = means[k].reshape(1, -1)
-#         dist[:, k] = np.linalg.norm(L - m, ord=2)
-#     cluster = np.argmin(dist, axis=1)
-#     return cluster
-
-
-# def M_step(L: np.ndarray, cluster: np.ndarray, K: int = 2) -> np.ndarray:
-#     new_center = np.zeros((K, L.shape[1]), dtype=np.float64)
-#     for k in range(K):
-#         mask = (cluster == k).reshape(-1, 1)
-#         cluster_k = L * mask
-#         print(cluster_k.shape, np.sum(mask))
-#         new_center[k] = np.sum(cluster_k,
-#                                axis=0, dtype=np.float64) / (np.sum(mask) + 1e-50)
-#     return new_center
-
-
-# def kmeans(args,
-#            L: np.ndarray,
-#            img: np.ndarray,
-#            center: np.ndarray,
-#            max_iters: int = 1000) -> np.ndarray:
-#     K = args.clusters
-#     cluster = E_step(L, center, K)
-#     for it in range(max_iters):
-#         print(np.sum(cluster))
-#         visualize(img, cluster, it, store=True, output_folder=args.output)
-#         print("old center", center)
-#         center = M_step(L, cluster, K)
-#         print("new center", center)
-#         new_cluster = E_step(L, center, K)
-#         diff_cluster = np.sum(new_cluster != cluster)
-#         if diff_cluster == 0:
-#             break
-#         print("iter {} delta {}".format(it + 1, diff_cluster))
-#         cluster = new_cluster
-#     return cluster
-
-
-# def initial_centers(X: np.ndarray,
-#                     spatial_grid: np.ndarray,
-#                     K: int = 2,
-#                     init_type: str = "pick") -> np.ndarray:
-#     """
-#     :param X: (#datapoint,#features) ndarray
-#     :param initType: 'pick', 'k_means++'
-#     Return: initial cluster assignment
-#     """
-
-#     if init_type == "kmeans++":
-#         center_idx = []
-#         center_idx.append(np.random.choice(np.arange(10000), size=1)[0])
-#         found = 1
-#         while (found < K):
-#             dist = np.zeros(10000)
-#             for i in range(10000):
-#                 min_dist = np.Inf
-#                 for f in range(found):
-#                     tmp = np.linalg.norm(spatial_grid[i, :] -
-#                                          spatial_grid[center_idx[f], :])
-#                     if tmp < min_dist:
-#                         min_dist = tmp
-#                 dist[i] = min_dist
-#             dist = dist / np.sum(dist)
-#             idx = np.random.choice(np.arange(10000), 1, p=dist)
-#             center_idx.append(idx[0])
-#             found += 1
-#         center_idx = np.array(center_idx)
-#         centers = X[center_idx, :]
-#     elif init_type == "pick":
-#         center_idx = np.random.choice(X.shape[0], size=K, replace=False)
-#         centers = X[center_idx, :]
-#     else:
-#         center_idx = np.zeros(K)
-#         centers = X[center_idx, :]
-
-#     return centers
-
 def kmeans(args, L:np.ndarray, img:np.ndarray) -> np.ndarray:
+    """
+    :param args: the program argument
+    :param L: the input feature matrix
+    :param img: the input image
+    Return: cluster assignment
+    """
     init_type = args.init
     K = args.clusters
 
@@ -139,10 +61,16 @@ def kmeans(args, L:np.ndarray, img:np.ndarray) -> np.ndarray:
         print("iter {} delta {}".format(it + 1, np.sum(old_clusters != clusters)))
         old_clusters = clusters
         it += 1
-        visualize(img, clusters, it, store=True, output_folder=args.output)
+        visualize(img, clusters, it, store=True, show=args.show, output_folder=args.output)
     return old_clusters
 
 def initial_centers(L:np.ndarray, K:int, init_type:str="pick"):
+    """
+    :param L: the input feature matrix
+    :param K: the number of cluster
+    :param init_type: the initialization method
+    Return: the initial mean
+    """
     mean = np.zeros((K, L.shape[1]), dtype=L.dtype) # mark
     if init_type == "pick": # normal k-means -> random center
         center = np.random.choice(10000, size=K, replace=False)
@@ -163,7 +91,6 @@ def initial_centers(L:np.ndarray, K:int, init_type:str="pick"):
                     break
     return mean
 
-
 def eigen_decompose(L: np.ndarray) -> np.ndarray:
     """
     :param L: the matrix to decompose
@@ -173,6 +100,35 @@ def eigen_decompose(L: np.ndarray) -> np.ndarray:
     eigenindex = np.argsort(eigenvalue)  # sort according to the eigenvalues
     eigenvector = eigenvector[:, eigenindex]
     return eigenvector[:, 1:].real  # exclude first eigenvector
+
+
+def drawplot2D(args, data:np.ndarray, cluster:np.ndarray):
+    K = args.clusters
+    plt.figure(dpi=300)
+    x = data[:, 0]
+    y = data[:, 1]
+    plt.xlabel("1st dim")
+    plt.ylabel("2nd dim")
+    plt.title("coordinates in the eigenspace of graph Laplacian")
+    for i in range(K):
+        plt.scatter(x[cluster==i], y[cluster==i], marker='.')
+    # plt.show()
+    plt.savefig(f"{args.img}_{args.method}_{K}.png")
+
+def drawplot3D(args, data:np.ndarray, cluster:np.ndarray):
+    K = args.clusters
+    ax = plt.figure(dpi=300).add_subplot(projection="3d")
+    x = data[:, 0]
+    y = data[:, 1]
+    z = data[:, 2]
+    ax.set_xlabel("1st dim")
+    ax.set_ylabel("2nd dim")
+    ax.set_zlabel("3rd dim")
+    plt.title("coordinates in the eigenspace of graph Laplacian")
+    for i in range(K):
+        ax.scatter(x[cluster==i], y[cluster==i], z[cluster==i], '.')
+    # plt.show()
+    plt.savefig(f"{args.img}_{args.method}_{K}.png")
 
 
 def main():
@@ -186,44 +142,53 @@ def main():
     parser.add_argument("--init", default="pick", type=str)
     parser.add_argument("--output", "-o", default="./output", type=str)
     parser.add_argument("--img", default="image1.png", type=str)
+    parser.add_argument("--show", action="store_true")
 
 
     start_t = time.time()
     args = parser.parse_args()
     os.makedirs(args.output, exist_ok=True)
     img = read_img(args.img)
-    spatial, W = RBF_kernel(img.reshape(-1, 3), 0.001, 0.001)
+    # spatial, W = RBF_kernel(img.reshape(-1, 3), 0.001, 0.001)
     print("made kernel in {}".format(time.time() - start_t))
     if args.method == "normalized":
-        L, _ = compute_LD(W, normalized=True)
-        np.save("lapla.npy", L)
-        start_t = time.time()
-        eigen = eigen_decompose(L)
-        np.save("eigen.npy", eigen)
-        pass
+
+        if os.path.exists(f"eigen_{args.method}_{args.img}.npy"):
+            eigen = np.load(f"eigen_{args.method}_{args.img}.npy")
+            eigen /= np.sqrt(np.sum(eigen ** 2, axis=1)).reshape(-1, 1)
+        else:
+            L, _ = compute_LD(W, normalized=True)
+            start_t = time.time()
+            eigen = eigen_decompose(L)
+            eigen /= np.sqrt(np.sum(eigen ** 2, axis=1)).reshape(-1, 1)
+            np.save(f"eigen_{args.method}_{args.img}.npy", eigen)
+
     elif args.method == "ratio":
 
-        L = np.load("lapla.npy")
-        eigen = np.load("eigen.npy")
+        if os.path.exists(f"eigen_{args.method}_{args.img}.npy"):
+            eigen = np.load(f"eigen_{args.method}_{args.img}.npy")
+        else:
+            L, _ = compute_LD(W)
+            start_t = time.time()
+            eigen = eigen_decompose(L)
+            np.save(f"eigen_{args.method}_{args.img}.npy", eigen)
 
-        # L, _ = compute_LD(W)
-        # np.save("lapla.npy", L)
-        # start_t = time.time()
-        # eigen = eigen_decompose(L)
-        # np.save("eigen.npy", eigen)
+    else:
+        raise RuntimeError("unrecognized method")
 
-        print("eigen decompose in {}".format(time.time() - start_t))
-        eigen = eigen[:, 0:args.clusters]
-        # init_c = initial_centers(eigen, spatial, args.clusters, args.init)
-        # cluster = kmeans(args, eigen, img, init_c)
-        cluster = kmeans(args, eigen, img)
+    print("eigen decompose in {}".format(time.time() - start_t))
+    eigen = eigen[:, 0:args.clusters]
+    cluster = kmeans(args, eigen, img)
+    if args.clusters == 2:
+        drawplot2D(args, eigen, cluster)
+    elif args.clusters == 3:
+        drawplot3D(args, eigen, cluster)
 
-        im = np.array(COLOR)[cluster]
-        im.resize((100, 100, 3))
-        plt.figure(dpi=300)
-        # plt.imshow(im)
-        # plt.show()
-
+    # im = np.array(COLOR)[cluster]
+    # im.resize((100, 100, 3))
+    # plt.figure(dpi=300)
+    # plt.imshow(im)
+    # plt.show()
 
 if __name__ == "__main__":
     main()
