@@ -207,23 +207,11 @@ def plotSimilarity(args, P:np.ndarray, Q:np.ndarray, labels:np.ndarray):
     perplexity, _type, file_path = args.perplexity, args.type, args.output
     fig, ax = plt.subplots(1, 2, figsize=(8, 4), dpi=300)
 
-    P_hist = np.histogram(np.log(P), bins=40)
-    Q_hist = np.histogram(np.log(Q), bins=40)
-
-
-    idx = labels.argsort()
-    sortP = P[:, idx][idx]
-    sortQ = Q[:, idx][idx]
-    
     ax[0].set_title(f'{_type} Similarity in High-D')
-    img = ax[0].imshow(np.log(sortP), cmap='gray')
-    fig.colorbar(img, ax=ax[0], shrink=0.7)
-    ax[0].axis('off')
+    ax[0].hist(P.flatten(), bins=40, log=True)
     
     ax[1].set_title(f'{_type} Similarity in Low-D')
-    img = ax[1].imshow(np.log(sortQ), cmap='gray')
-    fig.colorbar(img, ax=ax[1], shrink=0.7)
-    ax[1].axis('off')
+    ax[1].hist(Q.flatten(), bins=40, log=True)
     
     plt.tight_layout()
     plt.savefig(f'{file_path}/{_type}/per_{perplexity}/_similarity.jpg')
@@ -247,6 +235,6 @@ if __name__ == "__main__":
     
     os.makedirs(f'{args.output}/{args.type}/per_{args.perplexity}', exist_ok=True)
     
-    Y, P, Q = SNE(args, X, labels max_iter=100)
+    Y, P, Q = SNE(args, X, labels, max_iter=20)
     visualize(args, Y, labels, 'Final')
     plotSimilarity(args, P, Q, labels)
