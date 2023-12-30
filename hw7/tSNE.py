@@ -146,9 +146,9 @@ def SNE(args, X:np.ndarray, labels=np.ndarray|None, max_iter = 1000):
         # Compute pairwise affinities >> qij
         sum_Y = np.sum(np.square(Y), 1)
         num = -2. * np.dot(Y, Y.T)
-        if _type == 't-SNE':
+        if _type == "tSNE":
             num = 1. / (1. + np.add(np.add(num, sum_Y).T, sum_Y))
-        if _type == 'Symmetric SNE':
+        if _type == "SSNE":
             num = np.exp(-1. * np.add(np.add(num, sum_Y).T, sum_Y))
         num[range(n), range(n)] = 0.
         Q = num / np.sum(num)
@@ -157,9 +157,9 @@ def SNE(args, X:np.ndarray, labels=np.ndarray|None, max_iter = 1000):
         # Compute gradient
         PQ = P - Q
         for i in range(n):
-            if _type == 't-SNE':
+            if _type == "tSNE":
                 dY[i, :] = np.sum(np.tile(PQ[:, i] * num[:, i], (no_dims, 1)).T * (Y[i, :] - Y), 0)
-            if _type == 'Symmetric SNE':
+            if _type == "SSNE":
                 dY[i, :] = np.sum(np.tile(PQ[:, i], (no_dims, 1)).T * (Y[i, :] - Y), 0)
 
         # Perform the update
@@ -217,14 +217,13 @@ def plotSimilarity(args, P:np.ndarray, Q:np.ndarray, labels:np.ndarray):
     plt.savefig(f'{file_path}/{_type}/per_{perplexity}/_similarity.jpg')
 
 if __name__ == "__main__":
-    print("Run Y = tsne.tsne(X, no_dims, perplexity) to perform t-SNE on your dataset.")
     print("Running example on 2,500 MNIST digits...")
     
     X:np.ndarray = np.loadtxt("./tsne_python/mnist2500_X.txt")
     labels:np.ndarray = np.loadtxt("./tsne_python/mnist2500_labels.txt")
     
     parser = ArgumentParser()
-    parser.add_argument("--type", choices=["t-SNE", "Symmetric SNE"], default="t-SNE")
+    parser.add_argument("--type", choices=["tSNE", "SSNE"], default="tSNE")
     parser.add_argument("--perplexity", type=int, default=30)
     parser.add_argument("--dims", type=int, default=2)
     parser.add_argument("--init_dims", type=int, default=50)
@@ -235,6 +234,6 @@ if __name__ == "__main__":
     
     os.makedirs(f'{args.output}/{args.type}/per_{args.perplexity}', exist_ok=True)
     
-    Y, P, Q = SNE(args, X, labels, max_iter=20)
+    Y, P, Q = SNE(args, X, labels, max_iter=1000)
     visualize(args, Y, labels, 'Final')
     plotSimilarity(args, P, Q, labels)

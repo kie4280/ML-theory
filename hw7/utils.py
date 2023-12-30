@@ -25,11 +25,12 @@ def load_faces(
     Return list of imgs, list of filenames
     """
     files = glob(os.path.join(root, mode, "**"))
+    files.sort()
     imgs = []
     for file in files:
         im = Image.open(file)
         im = np.array(im)
-        im = np.moveaxis(im, 0, 1)
+        # im = np.moveaxis(im, 0, 1)
         imgs.append(im)
     file_names = [Path(f).stem for f in files]
     imgs = np.array(imgs, dtype=np.int32)
