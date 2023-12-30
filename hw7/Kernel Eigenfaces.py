@@ -266,7 +266,7 @@ if __name__ == "__main__":
     train_data, test_data = readData()
     dim = 25
     acc = 0
-    task = 1
+    task = 2
     
     # PCA
     if task == 1:
