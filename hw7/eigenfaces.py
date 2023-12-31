@@ -68,7 +68,7 @@ def PCA(data: np.ndarray, dims=25) -> Tuple[np.ndarray, np.ndarray]:
     eigenvector[:,
                 i] = eigenvector[:, i] / np.linalg.norm(eigenvector[:, i])
 
-  eigenindex = np.argsort(-eigenvalue)
+  eigenindex = np.argsort(eigenvalue)[::-1]
   eigenvector = eigenvector[:, eigenindex]
 
   # select the first dims largest eigenvectors
@@ -152,8 +152,11 @@ def kernelPCA(data: np.ndarray,
 
 
 def kernelLDA(data: np.ndarray, kernel_type: str, dims: int = 25):
-  Z = np.full((len(data), len(data)), 1 / train_num)
-  K = computeKernel(data, data, kernel_type)
+  Z_t = np.full((train_num, train_num), 1 / train_num)
+  Z = np.zeros((data.shape[0], data.shape[0]))
+  for i in range(subject_num):
+    Z[i*train_num:(i+1)*train_num, i*train_num:(i+1)*train_num] = Z_t
+  K = computeKernel(data, data, kernel_type, gamma=1e-7, c=1, d=2)
 
   Sw = K @ K
   Sb = K @ Z @ K
