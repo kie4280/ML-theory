@@ -170,27 +170,29 @@ def kernelLDA(data: np.ndarray, kernel_type: str, dims: int = 25):
   return W, K
 
 
-def showFace(W: np.ndarray, file_path: str, k=25, S=1, show=False):
+def showFace(W: np.ndarray, file_path: str,
+             dims: int = 25, show: bool = False):
   fig = plt.figure()
-  for i in range(k):
-    img = W[:, i].reshape(height // S, width // S)
+  for i in range(dims):
+    img = W[:, i].reshape(height, width)
     plt.imshow(img, cmap='gray')
     plt.savefig(f'{file_path}/eigenface_{i:02d}.jpg')
   plt.close()
-  row = int(np.ceil(np.sqrt(k)))
+  row = int(np.ceil(np.sqrt(dims)))
 
   fig = plt.figure(figsize=(12, 9), dpi=300)
-  for i in range(k):
-    img = W[:, i].reshape(height // S, width // S)
+  for i in range(dims):
+    img = W[:, i].reshape(height, width)
     ax = fig.add_subplot(row, row, i + 1)
     ax.imshow(img, cmap='gray')
-  plt.savefig(f'{file_path}/eigenfaces_{k}.jpg')
+  plt.savefig(f'{file_path}/eigenfaces_{dims}.jpg')
   if show:
     plt.show()
   plt.close()
 
 
-def reconstructFace(W, mean, data, file_path, show=False):
+def reconstructFace(W: np.ndarray, mean: np.ndarray,
+                    data: np.ndarray, file_path: str, show: bool = False):
   if mean is None:
     mean = np.zeros(W.shape[0])
 
@@ -344,7 +346,7 @@ if __name__ == "__main__":
     os.makedirs(eigenface_path, exist_ok=True)
     os.makedirs(reconstruct_path, exist_ok=True)
     W_PCA, mean_PCA = PCA(train_data, dims=args.dims)
-    showFace(W_PCA, eigenface_path, k=args.dims, show=args.show)
+    showFace(W_PCA, eigenface_path, dims=args.dims, show=args.show)
     reconstructFace(
         W_PCA,
         mean_PCA,
@@ -368,7 +370,7 @@ if __name__ == "__main__":
     # compress_test = imageCompression(test_data, scalar)
 
     W_LDA, mean_LDA = LDA(train_data, train_labels, args.dims)
-    showFace(W_LDA, fisher_path, k=args.dims, show=args.show)
+    showFace(W_LDA, fisher_path, dims=args.dims, show=args.show)
     reconstructFace(
         W_LDA,
         None,
