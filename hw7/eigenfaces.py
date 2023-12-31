@@ -263,9 +263,9 @@ def faceRecongnition(
                     low_train)  # Compute distance to all train_data
     nearest = np.argsort(dist)[:K]
     for n in nearest:
-      vote[n // train_num] += 1
-    predict = np.argmax(vote) + 1
-    if predict != i // 2 + 1:
+      vote[train_label[n]] += 1
+    predict = np.argmax(vote)
+    if predict != test_label[i]:
       err += 1
   print(
       f"K={K}: Accuracy:{1 - err/len(low_test):.4f} ({len(low_test) - err}/{len(low_test)})"
@@ -305,10 +305,9 @@ def kernelFaceRecongnition(
     dist = distance(low_test[i], low_train)
     nearest = np.argsort(dist)[:K]
     for n in nearest:
-      vote[n // train_num] += 1
-    predict = np.argmax(vote) + 1
-    # print(i // 2 + 1, predict, vote)
-    if predict != i // 2 + 1:
+      vote[train_label[n]] += 1
+    predict = np.argmax(vote)
+    if predict != test_label[i]:
       err += 1
   acc = 1 - err / low_test.shape[0]
   print(
