@@ -43,7 +43,7 @@ def load_faces(
     filename = Path(file).stem
     file_names.append(filename)
     features = filename.split(".")
-    l = int(features[0].replace("subject", ""))
+    l = int(features[0].replace("subject", "")) - 1
     labels.append(l)
 
   imgs = np.array(imgs, dtype=np.int32)
@@ -52,65 +52,33 @@ def load_faces(
   return imgs, file_names, labels
 
 
-def PCA(data: np.ndarray, k=25) -> Tuple[np.ndarray, np.ndarray]:
-  mean = np.mean(data, axis=0)
+def PCA(data: np.ndarray, dims=25) -> Tuple[np.ndarray, np.ndarray]:
+  """
+  :param data: the input data
+  :param dims: the level of the compression
+  Return the W matrix, mean of the data
+  """
+  mean = np.mean(data, axis=0).reshape(1, -1)
   cov = (data - mean) @ (data - mean).T
   eigenvalue, eigenvector = np.linalg.eig(cov)
   eigenvector = data.T @ eigenvector
 
-  # Normalize w
+  # normalize w
   for i in range(len(eigenvector[0])):
     eigenvector[:,
                 i] = eigenvector[:, i] / np.linalg.norm(eigenvector[:, i])
 
-  # Seclect first k largest eigenvalues
   eigenindex = np.argsort(-eigenvalue)
   eigenvector = eigenvector[:, eigenindex]
 
-  W = eigenvector[:, :k].real
+  # select the first dims largest eigenvectors
+  W = eigenvector[:, :dims].real
 
   return W, mean
 
 
-def imageCompression(data, S) -> np.ndarray:
-  d = np.zeros((len(data), height // S, width // S))
-  for n in range(len(data)):
-    d[n] = np.full((height // S, width // S), np.mean(data[n]))
-    img = data[n].reshape(height, width)
-    for i in range(0, height - S + 1, S):
-      for j in range(0, width - S + 1, S):
-        tmp = 0
-        # Summation SxS area in original image
-        for r in range(S):
-          for c in range(S):
-            tmp += img[i + r][j + c]
-        # New value is the avg. value of SxS area in original image
-        d[n][i // S][j // S] = tmp // (S**2)
-  return d.reshape(len(data), -1)
-
-
-# def LDA(data, label, dim):
-#   N = data.shape[1]  # N pixels
-#   mean = np.mean(data, axis=0)  # data mean (H*W, )
-#   Sw = np.zeros((N, N))
-#   Sb = np.zeros((N, N))
-#   for i in range(15):  # 15 subjects
-#     print("sdff", np.where(label == i+1)[0])
-#     data_i = data[np.where(label == i+1)[0], :]
-#     cmean_i = np.mean(data_i, axis=0)  # class mean
-#     Sw += (data_i - cmean_i).T @ (data_i - cmean_i)
-#     Sb += data_i.shape[0] * ((cmean_i - mean).T @ (cmean_i - mean))
-
-#   eigenvalue, eigenvector = np.linalg.eig(np.linalg.pinv(Sw) @ Sb)
-#   for i in range(eigenvector.shape[1]):
-#     eigenvector[:, i] = eigenvector[:, i] / np.linalg.norm(eigenvector[:, i])
-#   idx = np.argsort(eigenvalue)[::-1]
-#   print(eigenvalue[idx][:20])
-#   # W = eigenvector[:, idx][:, :dims].real
-#   W = eigenvector[:, idx][:, :dim].real
-#   return W, mean
-
-def LDA(data:np.ndarray, label:np.ndarray, dims:int) -> Tuple[np.ndarray, np.ndarray]:
+def LDA(data: np.ndarray, label: np.ndarray,
+        dims: int) -> Tuple[np.ndarray, np.ndarray]:
   """
   :param data: the input data
   :param label: the label of the face
@@ -125,16 +93,17 @@ def LDA(data:np.ndarray, label:np.ndarray, dims:int) -> Tuple[np.ndarray, np.nda
   S_w = np.zeros((d, d), dtype=np.float64)
   S_b = np.zeros((d, d), dtype=np.float64)
   for i in c:
-      X_i = data[label == i, :]
-      mu_i = np.mean(X_i, axis=0).reshape(1, -1)
-      S_w += (X_i - mu_i).T @ (X_i - mu_i)
-      S_b += X_i.shape[0] * ((mu_i - mu).T @ (mu_i - mu))
+    X_i = data[label == i, :]
+    mu_i = np.mean(X_i, axis=0).reshape(1, -1)
+    S_w += (X_i - mu_i).T @ (X_i - mu_i)
+    S_b += X_i.shape[0] * ((mu_i - mu).T @ (mu_i - mu))
   eigenvalue, eigenvector = np.linalg.eig(np.linalg.pinv(S_w) @ S_b)
-  # for i in range(eigenvector.shape[1]):
-  #     eigenvector[:, i] = eigenvector[:, i] / np.linalg.norm(eigenvector[:, i])
+
+  # normalize W
+  for i in range(eigenvector.shape[1]):
+    eigenvector[:, i] = eigenvector[:, i] / np.linalg.norm(eigenvector[:, i])
   idx = np.argsort(eigenvalue)[::-1]
-  print(eigenvalue[idx])
-  # W = eigenvector[:, idx][:, :dims].real
+  # select the first dims largest eigenvectors
   W = eigenvector[:, idx][:, :dims].real
   return W, mu
 
@@ -175,14 +144,14 @@ def kernelPCA(data: np.ndarray,
   for i in range(len(eigenvector[0])):
     eigenvector[:,
                 i] = eigenvector[:, i] / np.linalg.norm(eigenvector[:, i])
-  eigenindex = np.argsort(-eigenvalue)
+  eigenindex = np.argsort(eigenvalue)[::-1]
   eigenvector = eigenvector[:, eigenindex]
   W = eigenvector[:, :dims].real
 
   return W, K
 
 
-def kernelLDA(data: np.ndarray, kernel_type: str, dims=25):
+def kernelLDA(data: np.ndarray, kernel_type: str, dims: int = 25):
   Z = np.full((len(data), len(data)), 1 / train_num)
   K = computeKernel(data, data, kernel_type)
 
@@ -194,26 +163,25 @@ def kernelLDA(data: np.ndarray, kernel_type: str, dims=25):
   for i in range(len(eigenvector[0])):
     eigenvector[:,
                 i] = eigenvector[:, i] / np.linalg.norm(eigenvector[:, i])
-  eigenindex = np.argsort(-eigenvalue)
+  eigenindex = np.argsort(eigenvalue)[::-1]
   eigenvector = eigenvector[:, eigenindex]
   W = eigenvector[:, :dims].real
 
   return W, K
 
 
-def eigenFace(W: np.ndarray, file_path: str, k=25, S=1, show=False):
+def showFace(W: np.ndarray, file_path: str, k=25, S=1, show=False):
   fig = plt.figure()
   for i in range(k):
     img = W[:, i].reshape(height // S, width // S)
-    print(img.max(), img.min())
     plt.imshow(img, cmap='gray')
     plt.savefig(f'{file_path}/eigenface_{i:02d}.jpg')
   plt.close()
+  row = int(np.ceil(np.sqrt(k)))
 
   fig = plt.figure(figsize=(12, 9), dpi=300)
   for i in range(k):
     img = W[:, i].reshape(height // S, width // S)
-    row = int(np.sqrt(k))
     ax = fig.add_subplot(row, row, i + 1)
     ax.imshow(img, cmap='gray')
   plt.savefig(f'{file_path}/eigenfaces_{k}.jpg')
@@ -222,7 +190,7 @@ def eigenFace(W: np.ndarray, file_path: str, k=25, S=1, show=False):
   plt.close()
 
 
-def reconstructFace(W, mean, data, file_path, S=1, show=False):
+def reconstructFace(W, mean, data, file_path, show=False):
   if mean is None:
     mean = np.zeros(W.shape[0])
 
@@ -231,20 +199,22 @@ def reconstructFace(W, mean, data, file_path, S=1, show=False):
   for index in sel:
     x = data[index].reshape(1, -1)
     reconstruct = (x - mean) @ W @ W.T + mean
-    img.append(reconstruct.reshape(height // S, width // S))
-    fig, ax = plt.subplots(1, 2)
-    ax[0].imshow(x.reshape(height // S, width // S),
+    img.append(reconstruct.reshape(height, width))
+    fig, ax = plt.subplots(1, 2, dpi=300)
+    ax[0].imshow(x.reshape(height, width),
                  cmap='gray')  # Original face
-    ax[1].imshow(reconstruct.reshape(height // S, width // S),
+    ax[1].imshow(reconstruct.reshape(height, width),
                  cmap='gray')  # Reconstruct face
     fig.savefig(f'{file_path}/reconfaces_{len(img)}.jpg')
   plt.close()
 
   # Put all reconstruct faces together
-  fig = plt.figure(figsize=(10, 4), dpi=300)
+  fig = plt.figure(figsize=(10, 5), dpi=300)
   for i in range(len(img)):
-    ax = fig.add_subplot(2, 5, i + 1)
+    ax = fig.add_subplot(4, 5, i + 1)
     ax.imshow(img[i], cmap='gray')
+    ax = fig.add_subplot(4, 5, i + 11)
+    ax.imshow(data[sel[i]].reshape(height, width), cmap='gray')
   plt.savefig(f'{file_path}/reconfaces.jpg')
   if show:
     plt.show()
@@ -262,10 +232,23 @@ def distance(test, train_data):
   return dist
 
 
-def faceRecongnition(W, mean, train_data, test_data, K):
+def faceRecongnition(
+        W: np.ndarray,
+        mean: np.ndarray | None,
+        train_data: np.ndarray,
+        test_data: np.ndarray,
+        train_label: np.ndarray,
+        test_label: np.ndarray,
+        K: int):
   """
   Do the KNN to get the classification results
-  :param
+  :param W: the projection matrix W
+  :param mean: the mean of the data (if available)
+  :param train_data: the training data
+  :param test_data: the testing data
+  :param train_label: the label of the training data
+  :param test_label: the label of the testing data
+  :param K: the hyperparameter of KNN
   """
   if mean is None:
     mean = np.zeros(W.shape[0])
@@ -290,8 +273,26 @@ def faceRecongnition(W, mean, train_data, test_data, K):
   return 1 - err / len(low_test)
 
 
-def kernelFaceRecongnition(W: np.ndarray, train_data: np.ndarray,
-                           test_data: np.ndarray, kernel_type: str, kernel: np.ndarray, K):
+def kernelFaceRecongnition(
+        W: np.ndarray,
+        train_data: np.ndarray,
+        test_data: np.ndarray,
+        train_label: np.ndarray,
+        test_label: np.ndarray,
+        kernel_type: str,
+        kernel: np.ndarray,
+        K: int):
+  """
+  :param W: the projection matrix W
+  :param mean: the mean of the data (if available)
+  :param train_data: the training data
+  :param test_data: the testing data
+  :param train_label: the label of the training data
+  :param test_label: the label of the testing data
+  :param kernel_type: the type of kernel(RBF, linear, polynomial)
+  :param kernel: the pre-computed kernel
+  :param K: the hyperparameter of KNN
+  """
   low_train = kernel @ W
 
   K_test = computeKernel(test_data, train_data, kernel_type)
@@ -343,8 +344,8 @@ if __name__ == "__main__":
     reconstruct_path = os.path.join(PCA_file, "reconstruct")
     os.makedirs(eigenface_path, exist_ok=True)
     os.makedirs(reconstruct_path, exist_ok=True)
-    W_PCA, mean_PCA = PCA(train_data, k=args.dims)
-    eigenFace(W_PCA, eigenface_path, k=args.dims, show=args.show)
+    W_PCA, mean_PCA = PCA(train_data, dims=args.dims)
+    showFace(W_PCA, eigenface_path, k=args.dims, show=args.show)
     reconstructFace(
         W_PCA,
         mean_PCA,
@@ -352,7 +353,10 @@ if __name__ == "__main__":
         reconstruct_path,
         show=args.show)
     for i in range(1, 20, 2):
-      acc += faceRecongnition(W_PCA, mean_PCA, train_data, test_data, i)
+      acc += faceRecongnition(
+          W_PCA, mean_PCA, train_data,
+          test_data, train_labels, test_labels,
+          K=i)
 
   # LDA
   elif args.mode == "LDA":
@@ -365,15 +369,17 @@ if __name__ == "__main__":
     # compress_test = imageCompression(test_data, scalar)
 
     W_LDA, mean_LDA = LDA(train_data, train_labels, args.dims)
-    eigenFace(W_LDA, fisher_path, k=args.dims, show=args.show)
+    showFace(W_LDA, fisher_path, k=args.dims, show=args.show)
     reconstructFace(
         W_LDA,
-        mean_LDA,
+        None,
         train_data,
         reconstruct_path,
         show=args.show)
     for i in range(1, 20, 2):
-      acc += faceRecongnition(W_LDA, None, train_data, test_data, i)
+      acc += faceRecongnition(
+          W_LDA, None, train_data,
+          test_data, train_labels, test_labels, K=i)
 
   # Kernel PCA
   elif args.mode == "kernelPCA":
@@ -383,9 +389,9 @@ if __name__ == "__main__":
 
     W_kPCA, kernel = kernelPCA(centered_train, args.kernel, dims=args.dims)
     for i in range(1, 20, 2):
-      acc += kernelFaceRecongnition(W_kPCA, centered_train,
-                                    centered_test, args.kernel, kernel,
-                                    i)
+      acc += kernelFaceRecongnition(
+          W_kPCA, centered_train, centered_test,
+          train_labels, test_labels, args.kernel, kernel, i)
 
   # Kernel LDA
   elif args.mode == "kernelLDA":
@@ -395,8 +401,8 @@ if __name__ == "__main__":
 
     W_kLDA, kernel = kernelLDA(centered_train, args.kernel)
     for i in range(1, 20, 2):
-      acc += kernelFaceRecongnition(W_kLDA, centered_train,
-                                    centered_test, args.kernel, kernel,
-                                    i)
+      acc += kernelFaceRecongnition(
+          W_kLDA, centered_train, centered_test,
+          train_labels, test_labels, args.kernel, kernel, i)
 
   print(f"Average accuracy:{acc / 10: .4f}")
